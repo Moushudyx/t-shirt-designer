@@ -10,13 +10,38 @@
         height: 100%;
       }
 
+      body {
+        background: linear-gradient(135deg, #f5f7fb, #edf2f8);
+        font-family: "Segoe UI", "PingFang SC", sans-serif;
+      }
+
+      #demo-shell {
+        box-sizing: border-box;
+        height: 100%;
+        padding: 20px;
+      }
+
+      #demo-card {
+        height: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        background: #ffffff;
+        border: 1px solid #d8dee8;
+        border-radius: 14px;
+        overflow: hidden;
+      }
+
       #app {
         height: 100%;
       }
     </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="demo-shell">
+      <div id="demo-card">
+        <div id="app"></div>
+      </div>
+    </div>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

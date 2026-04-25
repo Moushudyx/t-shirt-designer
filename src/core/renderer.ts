@@ -46,6 +46,7 @@ export class RendererCore {
     if (config.zoom?.initial) {
       this.camera.position.setLength(config.zoom.initial);
     }
+    this.controls.update();
     this.controls.addEventListener('change', () => this.renderOnce());
 
     const ambient = new AmbientLight('#ffffff', 0.9);
@@ -54,6 +55,7 @@ export class RendererCore {
     this.scene.add(ambient, keyLight);
 
     this.mountEl.appendChild(this.renderer.domElement);
+
     this.resizeObserver = new ResizeObserver(() => {
       this.resize();
       this.renderOnce();
@@ -61,7 +63,6 @@ export class RendererCore {
     this.resizeObserver.observe(this.mountEl);
 
     this.resize();
-    this.controls.update();
     this.renderOnce();
   }
 

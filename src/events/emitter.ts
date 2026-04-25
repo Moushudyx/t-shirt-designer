@@ -23,7 +23,10 @@ export class Emitter<TEvents extends object> {
    */
   off<K extends keyof TEvents>(event: K, handler: Handler<TEvents[K]>): void {
     const set = this.listeners.get(event);
-    if (!set) return;
+    if (!set) {
+      return;
+    }
+
     set.delete(handler);
     if (set.size === 0) {
       this.listeners.delete(event);
@@ -35,7 +38,10 @@ export class Emitter<TEvents extends object> {
    */
   emit<K extends keyof TEvents>(event: K, payload: TEvents[K]): void {
     const set = this.listeners.get(event);
-    if (!set) return;
+    if (!set) {
+      return;
+    }
+
     for (const handler of set) {
       handler(payload);
     }

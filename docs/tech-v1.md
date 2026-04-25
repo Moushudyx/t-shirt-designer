@@ -4,7 +4,7 @@
 
 ## 1. 范围约束（v1）
 
-1. v1 仅覆盖主流程能力: 模型渲染、部位选择、颜色编辑、单层贴图编辑、设计状态保存与恢复。
+1. v1 仅覆盖主流程能力: 模型渲染、部位选择、颜色编辑、多贴图编辑（图片/文字）、设计状态保存与恢复。
 2. v1 暂不覆盖复杂边界场景: 异常模型命名自动修复、多层贴图混合、超大模型性能自适配等。
 3. v1 不做模型语义解析，部位映射完全依赖外部配置。
 
@@ -31,15 +31,15 @@
 
 建议目录:
 
-- src/index.js: 对外入口，导出 Designer 类。
-- src/core/renderer.js: 渲染器、相机、控制器初始化与渲染循环。
-- src/core/model-manager.js: 模型加载/挂载、mesh 索引与 part 映射。
-- src/core/material-manager.js: 颜色与贴图材质策略。
-- src/core/picker.js: Raycaster 拾取与点击命中。
-- src/ui/panel.js: 右侧设计区 DOM 渲染与交互绑定。
-- src/state/store.js: 轻量状态容器（当前选中 part、每个 part 的颜色/贴图参数）。
-- src/events/emitter.js: 事件发布订阅。
-- src/utils/texture.js: 贴图加载、尺寸校验、释放逻辑。
+- src/index.ts: 对外入口，导出 Designer 类。
+- src/core/renderer.ts: 渲染器、相机、控制器初始化与渲染循环。
+- src/core/model-manager.ts: 模型加载/挂载、mesh 索引与 part 映射。
+- src/core/material-manager.ts: 颜色与贴图材质策略。
+- src/core/picker.ts: Raycaster 拾取与点击命中。
+- src/ui/panel.ts: 右侧设计区 DOM 渲染与交互绑定。
+- src/state/store.ts: 轻量状态容器（当前选中 part、每个 part 的颜色/贴图参数）。
+- src/events/emitter.ts: 事件发布订阅。
+- src/utils/texture.ts: 贴图加载、尺寸校验、释放逻辑。
 - src/styles/index.css: 组件样式。
 
 开发与构建:
@@ -55,19 +55,45 @@
 /** @typedef {{x:number,y:number,z:number}} Vec3 */
 
 /**
- * @typedef {Object} TextureState
- * @property {string} source - 贴图来源，支持 http(s) URL 或 data URL
- * @property {number} offsetX
- * @property {number} offsetY
- * @property {number} scale
- * @property {number} rotationDeg
+ * @typedef {Object} DecalBase
+ * @property {string} id - 贴图唯一 ID
+ * @property {'image'|'text'} type - 贴图类型
+ * @property {number} x - 归一化坐标 [0,1]
+ * @property {number} y - 归一化坐标 [0,1]
+ * @property {number} scale - 缩放系数
+ * @property {number} rotationDeg - 旋转角度
+ * @property {number} opacity - 透明度 [0,1]
+ */
+
+/**
+ * @typedef {DecalBase & {
+ *   type:'image',
+ *   source:string,
+ *   width:number,
+ *   height:number
+ * }} ImageDecal
+ */
+
+/**
+ * @typedef {DecalBase & {
+ *   type:'text',
+ *   text:string,
+ *   color:string,
+ *   fontFamily:string,
+ *   fontSize:number,
+ *   fontWeight:string
+ * }} TextDecal
+ */
+
+/**
+ * @typedef {ImageDecal | TextDecal} DecalState
  */
 
 /**
  * @typedef {Object} DesignState
  * @property {number} schemaVersion - 状态结构版本，v1 固定为 1
  * @property {string|null} selectedPartId
- * @property {Record<string, {color:string, texture?:TextureState}>} partStyles
+ * @property {Record<string, {color:string, decals:DecalState[]}>} partStyles
  */
 
 /**
@@ -100,13 +126,34 @@
   partStyles: {
     front: {
       color: "#ffffff",
-      texture: {
-        source: "https://cdn.example.com/front-logo.png",
-        offsetX: 0,
-        offsetY: 0,
-        scale: 1,
-        rotationDeg: 0
-      }
+      decals: [
+        {
+          id: "decal-1",
+          type: "image",
+          source: "https://cdn.example.com/front-logo.png",
+          x: 0.5,
+          y: 0.4,
+          width: 240,
+          height: 120,
+          scale: 1,
+          rotationDeg: 0,
+          opacity: 1
+        },
+        {
+          id: "decal-2",
+          type: "text",
+          text: "TEAM A",
+          color: "#111111",
+          fontFamily: "Arial",
+          fontSize: 64,
+          fontWeight: "700",
+          x: 0.5,
+          y: 0.75,
+          scale: 1,
+          rotationDeg: 0,
+          opacity: 1
+        }
+      ]
     }
   }
 }
@@ -125,13 +172,15 @@
 1. 配置中的 meshTargets 不存在时输出 warning。
 2. 未映射 mesh 被点击时不抛错，仅忽略。
 
-### 5.2 材质策略（颜色 + 贴图）
+### 5.2 材质策略（颜色 + 多贴图）
 
 1. 每个 part 统一维护“基材质模板”，避免频繁 new 材质。
 2. 颜色更新仅改 material.color。
-3. 贴图更新使用 TextureLoader；设置 map、needsUpdate。
-4. 贴图变换通过 texture.offset/repeat/rotation/center。
-5. 替换贴图时调用旧贴图 dispose，避免显存泄漏。
+3. 同一 part 的 decals 数组按顺序渲染到离屏 canvas，合成为单张纹理后挂载到 material.map。
+4. image 类型从 source 加载后按 x/y/scale/rotationDeg/opacity 绘制。
+5. text 类型按 fontFamily/fontSize/fontWeight/color 与 x/y/scale/rotationDeg/opacity 绘制。
+6. 每次 decals 更新后替换旧纹理并 dispose，避免显存泄漏。
+7. 支持 decals 顺序调整，上层元素按数组后序覆盖前序。
 
 ### 5.3 交互控制
 
@@ -151,9 +200,9 @@
 ### 5.5 设计状态保存与恢复
 
 1. 状态序列化格式使用 DesignState，保证可 JSON.stringify/JSON.parse。
-2. v1 贴图持久化仅约定 source 为可复用地址（http(s) 或 data URL）；blob URL 仅用于会话内预览，不作为长期存储格式。
+2. image 贴图持久化约定 source 为可复用地址（http(s) 或 data URL）；blob URL 仅用于会话内预览，不作为长期存储格式。
 3. 每次颜色、贴图、选中部位变更后触发统一状态变更事件，输出完整 DesignState 快照。
-4. setDesignState(state) 执行全量覆盖更新，按 partId 逐项应用材质并刷新 UI。
+4. setDesignState(state) 执行全量覆盖更新，按 partId 逐项应用颜色与 decals 并刷新 UI。
 5. 状态升级策略: 读取时先检查 schemaVersion；v1 仅支持 schemaVersion=1，不兼容时抛出可读错误。
 
 ### 5.6 Vue modelValue 兼容策略
@@ -163,12 +212,23 @@
 3. Vue 封装层可将 modelValue 透传为初始化值，并在 update:modelValue 时向上 emit，实现 v-model 双向绑定。
 4. 非 Vue 场景统一使用 styleChanged 事件，保持同一套状态快照。
 
+### 5.7 配置约束执行
+
+1. 当 part.palette 存在时，UI 颜色输入收敛为下拉选择，仅允许提交 palette 中定义的颜色。
+2. 运行时 setPartColor 也执行 palette 二次校验，防止绕过 UI 的非法输入。
+3. 当 part.allowTexture=false 时，图片上传与文字新增控件禁用，运行时贴图 API 直接拒绝并触发 error 事件。
+
 ## 6. API 设计（对外）
 
 ```js
 class TshirtDesigner {
   constructor(config) {}
   setPartColor(partId, color) {}
+  addImageDecal(partId, fileOrUrl, options) {}
+  addTextDecal(partId, options) {}
+  updateDecal(partId, decalId, patch) {}
+  removeDecal(partId, decalId) {}
+  setPartDecals(partId, decals) {}
   setPartTexture(partId, fileOrUrl, transform) {}
   selectPart(partId) {}
   getModelValue() {}

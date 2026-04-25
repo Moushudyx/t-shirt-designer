@@ -1,16 +1,33 @@
-import type { DesignState, PartConfig, TextureState } from '../types';
+import {
+  DESIGN_SCHEMA_VERSION,
+  type DecalState,
+  type DesignState,
+  type PartConfig,
+  type PartStyle
+} from '../types';
 
+/**
+ * 构建默认部件样式
+ */
+function createInitialPartStyle(defaultColor?: string): PartStyle {
+  return {
+    color: defaultColor ?? '#ffffff',
+    decals: []
+  };
+}
+
+/**
+ * 根据部件配置构建初始状态
+ */
 function buildInitialState(parts: PartConfig[]): DesignState {
   const partStyles: DesignState['partStyles'] = {};
 
   for (const part of parts) {
-    partStyles[part.partId] = {
-      color: part.defaultColor ?? '#ffffff'
-    };
+    partStyles[part.partId] = createInitialPartStyle(part.defaultColor);
   }
 
   return {
-    schemaVersion: 1,
+    schemaVersion: DESIGN_SCHEMA_VERSION,
     selectedPartId: parts[0]?.partId ?? null,
     partStyles
   };
@@ -56,16 +73,91 @@ export class Store {
    * 设置部件底色
    */
   setPartColor(partId: string, color: string): DesignState {
-    const part = this.state.partStyles[partId] ?? { color: '#ffffff' };
+    const part = this.ensurePart(partId);
     part.color = color;
-    this.state.partStyles[partId] = part;
     return this.getState();
   }
 
-  setPartTexture(partId: string, texture: TextureState): DesignState {
-    const part = this.state.partStyles[partId] ?? { color: '#ffffff' };
-    part.texture = texture;
-    this.state.partStyles[partId] = part;
+  /**
+   * 全量设置部件贴图数组
+   */
+  setPartDecals(partId: string, decals: DecalState[]): DesignState {
+    const part = this.ensurePart(partId);
+    part.decals = structuredClone(decals);
     return this.getState();
+  }
+
+  /**
+   * 追加一个贴图
+   */
+  addPartDecal(partId: string, decal: DecalState): DesignState {
+    const part = this.ensurePart(partId);
+    part.decals.push(structuredClone(decal));
+    return this.getState();
+  }
+
+  /**
+   * 更新某个贴图
+   */
+  updatePartDecal(partId: string, decalId: string, patch: Partial<DecalState>): DesignState {
+    const part = this.ensurePart(partId);
+    const index = part.decals.findIndex((item) => item.id === decalId);
+    if (index === -1) {
+      return this.getState();
+    }
+
+    const current = part.decals[index];
+    part.decals[index] = {
+      ...current,
+      ...patch,
+      id: current.id,
+      type: current.type
+    } as DecalState;
+    return this.getState();
+  }
+
+  /**
+   * 删除某个贴图
+   */
+  removePartDecal(partId: string, decalId: string): DesignState {
+    const part = this.ensurePart(partId);
+    part.decals = part.decals.filter((item) => item.id !== decalId);
+    return this.getState();
+  }
+
+  /**
+   * 调整贴图顺序
+   */
+  movePartDecal(partId: string, decalId: string, direction: 'up' | 'down'): DesignState {
+    const part = this.ensurePart(partId);
+    const index = part.decals.findIndex((item) => item.id === decalId);
+    if (index === -1) {
+      return this.getState();
+    }
+
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= part.decals.length) {
+      return this.getState();
+    }
+
+    const next = [...part.decals];
+    const [item] = next.splice(index, 1);
+    next.splice(targetIndex, 0, item);
+    part.decals = next;
+    return this.getState();
+  }
+
+  /**
+   * 确保部件样式存在
+   */
+  private ensurePart(partId: string): PartStyle {
+    const part = this.state.partStyles[partId];
+    if (part) {
+      return part;
+    }
+
+    const created = createInitialPartStyle();
+    this.state.partStyles[partId] = created;
+    return created;
   }
 }

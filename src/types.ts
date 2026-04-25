@@ -1,23 +1,63 @@
 import type { Object3D } from 'three';
 
-export interface TextureState {
-  source: string;
-  offsetX: number;
-  offsetY: number;
+/**
+ * 设计状态版本号常量
+ */
+export const DESIGN_SCHEMA_VERSION = 1 as const;
+
+/**
+ * 贴图基础结构
+ */
+export interface DecalBase {
+  id: string;
+  type: 'image' | 'text';
+  x: number;
+  y: number;
   scale: number;
   rotationDeg: number;
+  opacity: number;
 }
 
+/**
+ * 图片贴图结构
+ */
+export interface ImageDecal extends DecalBase {
+  type: 'image';
+  source: string;
+  width: number;
+  height: number;
+}
+
+/**
+ * 文字贴图结构
+ */
+export interface TextDecal extends DecalBase {
+  type: 'text';
+  text: string;
+  color: string;
+  fontFamily: string;
+  fontSize: number;
+  fontWeight: string;
+}
+
+/**
+ * 贴图联合类型
+ */
+export type DecalState = ImageDecal | TextDecal;
+
+/**
+ * 部件样式状态
+ */
 export interface PartStyle {
   color: string;
-  texture?: TextureState;
+  decals: DecalState[];
 }
 
 /**
  * 全量设计状态
  */
 export interface DesignState {
-  schemaVersion: 1;
+  schemaVersion: typeof DESIGN_SCHEMA_VERSION;
   selectedPartId: string | null;
   partStyles: Record<string, PartStyle>;
 }
@@ -53,13 +93,39 @@ export interface DesignerConfig {
   modelValue?: DesignState;
 }
 
-export interface TextureTransform {
-  offsetX?: number;
-  offsetY?: number;
+/**
+ * 贴图变换参数
+ */
+export interface DecalTransform {
+  x?: number;
+  y?: number;
   scale?: number;
   rotationDeg?: number;
+  opacity?: number;
 }
 
+/**
+ * 新增图片贴图输入
+ */
+export interface AddImageDecalInput extends DecalTransform {
+  width?: number;
+  height?: number;
+}
+
+/**
+ * 新增文字贴图输入
+ */
+export interface AddTextDecalInput extends DecalTransform {
+  text: string;
+  color?: string;
+  fontFamily?: string;
+  fontSize?: number;
+  fontWeight?: string;
+}
+
+/**
+ * 设计器事件映射
+ */
 export interface DesignerEvents {
   ready: void;
   partSelected: { partId: string };
