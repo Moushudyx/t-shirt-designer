@@ -14,6 +14,16 @@ type PanelHandlers = {
 };
 
 /**
+ * 输入焦点快照
+ */
+type FocusSnapshot = {
+  decalId: string;
+  field: string;
+  selectionStart: number | null;
+  selectionEnd: number | null;
+};
+
+/**
  * 右侧设计面板
  */
 export class Panel {
@@ -213,6 +223,7 @@ export class Panel {
    * 渲染部件的贴图列表
    */
   private renderDecals(partId: string, decals: DecalState[], container: HTMLElement): void {
+    const focusSnapshot = this.captureFocusSnapshot(container);
     container.innerHTML = '';
 
     if (decals.length === 0) {
@@ -263,50 +274,52 @@ export class Panel {
       header.append(title, buttonGroup);
       item.appendChild(header);
 
-      item.appendChild(this.createNumberControl('X', decal.x, 0, 1, 0.01, (value) => {
+      item.appendChild(this.createNumberControl('X', decal.id, 'x', decal.x, 0, 1, 0.01, (value) => {
         this.handlers.onUpdateDecal(partId, decal.id, { x: value });
       }));
 
-      item.appendChild(this.createNumberControl('Y', decal.y, 0, 1, 0.01, (value) => {
+      item.appendChild(this.createNumberControl('Y', decal.id, 'y', decal.y, 0, 1, 0.01, (value) => {
         this.handlers.onUpdateDecal(partId, decal.id, { y: value });
       }));
 
-      item.appendChild(this.createNumberControl('缩放', decal.scale, 0.1, 6, 0.1, (value) => {
+      item.appendChild(this.createNumberControl('缩放', decal.id, 'scale', decal.scale, 0.1, 6, 0.1, (value) => {
         this.handlers.onUpdateDecal(partId, decal.id, { scale: value });
       }));
 
-      item.appendChild(this.createNumberControl('旋转', decal.rotationDeg, -180, 180, 1, (value) => {
+      item.appendChild(this.createNumberControl('旋转', decal.id, 'rotationDeg', decal.rotationDeg, -180, 180, 1, (value) => {
         this.handlers.onUpdateDecal(partId, decal.id, { rotationDeg: value });
       }));
 
-      item.appendChild(this.createNumberControl('透明度', decal.opacity, 0, 1, 0.05, (value) => {
+      item.appendChild(this.createNumberControl('透明度', decal.id, 'opacity', decal.opacity, 0, 1, 0.05, (value) => {
         this.handlers.onUpdateDecal(partId, decal.id, { opacity: value });
       }));
 
       if (decal.type === 'text') {
-        item.appendChild(this.createTextControl('文本', decal.text, (value) => {
+        item.appendChild(this.createTextControl('文本', decal.id, 'text', decal.text, (value) => {
           this.handlers.onUpdateDecal(partId, decal.id, { text: value });
         }));
 
-        item.appendChild(this.createDecalColorControl('颜色', decal.color, (value) => {
+        item.appendChild(this.createDecalColorControl('颜色', decal.id, 'color', decal.color, (value) => {
           this.handlers.onUpdateDecal(partId, decal.id, { color: value });
         }));
 
-        item.appendChild(this.createTextControl('字体', decal.fontFamily, (value) => {
+        item.appendChild(this.createTextControl('字体', decal.id, 'fontFamily', decal.fontFamily, (value) => {
           this.handlers.onUpdateDecal(partId, decal.id, { fontFamily: value });
         }));
 
-        item.appendChild(this.createNumberControl('字号', decal.fontSize, 8, 300, 1, (value) => {
+        item.appendChild(this.createNumberControl('字号', decal.id, 'fontSize', decal.fontSize, 8, 300, 1, (value) => {
           this.handlers.onUpdateDecal(partId, decal.id, { fontSize: value });
         }));
 
-        item.appendChild(this.createTextControl('字重', decal.fontWeight, (value) => {
+        item.appendChild(this.createTextControl('字重', decal.id, 'fontWeight', decal.fontWeight, (value) => {
           this.handlers.onUpdateDecal(partId, decal.id, { fontWeight: value });
         }));
       }
 
       container.appendChild(item);
     });
+
+    this.restoreFocusSnapshot(container, focusSnapshot);
   }
 
   /**
@@ -314,6 +327,8 @@ export class Panel {
    */
   private createNumberControl(
     label: string,
+    decalId: string,
+    field: string,
     value: number,
     min: number,
     max: number,
@@ -328,6 +343,9 @@ export class Panel {
 
     const input = document.createElement('input');
     input.type = 'number';
+    input.dataset.role = 'decal-editor';
+    input.dataset.decalId = decalId;
+    input.dataset.field = field;
     input.min = String(min);
     input.max = String(max);
     input.step = String(step);
@@ -350,6 +368,8 @@ export class Panel {
    */
   private createTextControl(
     label: string,
+    decalId: string,
+    field: string,
     value: string,
     onChange: (value: string) => void
   ): HTMLElement {
@@ -361,8 +381,11 @@ export class Panel {
 
     const input = document.createElement('input');
     input.type = 'text';
+    input.dataset.role = 'decal-editor';
+    input.dataset.decalId = decalId;
+    input.dataset.field = field;
     input.value = value;
-    input.addEventListener('change', () => {
+    input.addEventListener('input', () => {
       onChange(input.value);
     });
 
@@ -375,6 +398,8 @@ export class Panel {
    */
   private createDecalColorControl(
     label: string,
+    decalId: string,
+    field: string,
     value: string,
     onChange: (value: string) => void
   ): HTMLElement {
@@ -386,6 +411,9 @@ export class Panel {
 
     const input = document.createElement('input');
     input.type = 'color';
+    input.dataset.role = 'decal-editor';
+    input.dataset.decalId = decalId;
+    input.dataset.field = field;
     input.value = value;
     input.addEventListener('input', () => {
       onChange(input.value);
@@ -393,5 +421,52 @@ export class Panel {
 
     row.append(text, input);
     return row;
+  }
+
+  /**
+   * 记录当前输入焦点
+   */
+  private captureFocusSnapshot(container: HTMLElement): FocusSnapshot | null {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLInputElement)) {
+      return null;
+    }
+
+    if (!container.contains(active)) {
+      return null;
+    }
+
+    const decalId = active.dataset.decalId;
+    const field = active.dataset.field;
+    if (!decalId || !field) {
+      return null;
+    }
+
+    return {
+      decalId,
+      field,
+      selectionStart: active.selectionStart,
+      selectionEnd: active.selectionEnd
+    };
+  }
+
+  /**
+   * 恢复输入焦点
+   */
+  private restoreFocusSnapshot(container: HTMLElement, snapshot: FocusSnapshot | null): void {
+    if (!snapshot) {
+      return;
+    }
+
+    const selector = `input[data-role="decal-editor"][data-decal-id="${snapshot.decalId}"][data-field="${snapshot.field}"]`;
+    const target = container.querySelector(selector);
+    if (!(target instanceof HTMLInputElement)) {
+      return;
+    }
+
+    target.focus();
+    if (snapshot.selectionStart !== null && snapshot.selectionEnd !== null) {
+      target.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd);
+    }
   }
 }

@@ -364,7 +364,8 @@ export class TshirtDesigner {
    */
   setDesignState(state: DesignState): void {
     if (state.schemaVersion !== DESIGN_SCHEMA_VERSION) {
-      throw new Error(`Unsupported schemaVersion ${state.schemaVersion}`);
+      this.emitError(`Unsupported schemaVersion ${state.schemaVersion}`, undefined);
+      return;
     }
 
     const next = this.store.setState(state);
@@ -513,10 +514,24 @@ export class TshirtDesigner {
    * 触发统一错误事件
    */
   private emitError(message: string, cause: unknown): void {
+    const willThrow = this.config.throwOnError ?? false;
+
+    this.emitter.emit('runtimeError', {
+      message,
+      cause,
+      willThrow
+    });
+
     this.emitter.emit('error', {
       message,
       cause
     });
+
+    if (willThrow) {
+      const error = new Error(message);
+      (error as Error & { cause?: unknown }).cause = cause;
+      throw error;
+    }
   }
 }
 

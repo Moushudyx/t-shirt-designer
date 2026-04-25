@@ -9,6 +9,27 @@ import {
 import { TshirtDesigner, type DesignState, type PartConfig } from '../src/index';
 
 /**
+ * toast 展示时长常量
+ */
+const TOAST_DURATION_MS = 2200;
+
+/**
+ * 展示错误提示
+ */
+function showToast(message: string): void {
+  const toastEl = document.getElementById('toast');
+  if (!toastEl) {
+    return;
+  }
+
+  toastEl.textContent = message;
+  toastEl.classList.add('is-visible');
+  window.setTimeout(() => {
+    toastEl.classList.remove('is-visible');
+  }, TOAST_DURATION_MS);
+}
+
+/**
  * 构建演示模型
  */
 function buildMockModel(): Object3D {
@@ -81,6 +102,7 @@ const designer = new TshirtDesigner({
   mountEl,
   modelData: buildMockModel(),
   parts,
+  throwOnError: false,
   zoom: {
     min: 1,
     max: 5,
@@ -105,4 +127,19 @@ designer.addTextDecal('front', {
  */
 designer.on('update:modelValue', ({ modelValue }: { modelValue: DesignState }) => {
   console.log('design-state', modelValue);
+});
+
+/**
+ * 观察错误事件
+ */
+designer.on('error', ({ message }) => {
+  console.error('designer-error', message);
+  showToast(message);
+});
+
+/**
+ * 观察运行时错误事件
+ */
+designer.on('runtimeError', ({ message, willThrow }) => {
+  console.warn('designer-runtime-error', message, { willThrow });
 });

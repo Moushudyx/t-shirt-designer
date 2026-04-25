@@ -111,6 +111,7 @@
  * @property {HTMLElement} mountEl
  * @property {Object} modelData - 直接提供给 three.js 的模型数据
  * @property {PartConfig[]} parts
+ * @property {boolean} [throwOnError=false] - 出错时是否抛出异常
  * @property {{min:number,max:number,initial:number}} [zoom]
  * @property {{rotate:boolean,pan:boolean}} [controls]
  * @property {DesignState} [modelValue] - 初始设计状态（用于 v-model 对齐）
@@ -217,6 +218,7 @@
 1. 当 part.palette 存在时，UI 颜色输入收敛为下拉选择，仅允许提交 palette 中定义的颜色。
 2. 运行时 setPartColor 也执行 palette 二次校验，防止绕过 UI 的非法输入。
 3. 当 part.allowTexture=false 时，图片上传与文字新增控件禁用，运行时贴图 API 直接拒绝并触发 error 事件。
+4. 所有运行时异常统一触发 runtimeError 事件，并通过 throwOnError 参数控制是否额外抛出异常。
 
 ## 6. API 设计（对外）
 
@@ -247,7 +249,8 @@ class TshirtDesigner {
 2. partSelected
 3. styleChanged
 4. update:modelValue
-5. error
+5. runtimeError
+6. error
 
 ## 7. 构建与发布方案
 

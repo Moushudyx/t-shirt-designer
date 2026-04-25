@@ -81,6 +81,7 @@ export interface DesignerConfig {
   mountEl: HTMLElement;
   modelData: Object3D;
   parts: PartConfig[];
+  throwOnError?: boolean;
   zoom?: {
     min: number;
     max: number;
@@ -131,5 +132,6 @@ export interface DesignerEvents {
   partSelected: { partId: string };
   styleChanged: { state: DesignState };
   'update:modelValue': { modelValue: DesignState };
+  runtimeError: { message: string; cause?: unknown; willThrow: boolean };
   error: { message: string; cause?: unknown };
 }
