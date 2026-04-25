@@ -1,9 +1,11 @@
 import {
   AmbientLight,
+  Box3,
   Color,
   DirectionalLight,
   PerspectiveCamera,
   Scene,
+  Vector3,
   WebGLRenderer,
   type Object3D
 } from 'three';
@@ -20,6 +22,9 @@ export class RendererCore {
   private readonly controls: OrbitControls;
   private readonly mountEl: HTMLElement;
   private readonly resizeObserver: ResizeObserver;
+  private readonly fitBox = new Box3();
+  private readonly fitSize = new Vector3();
+  private readonly fitCenter = new Vector3();
 
   /**
    * 初始化 three.js 场景
@@ -71,6 +76,7 @@ export class RendererCore {
    */
   addModel(model: Object3D): void {
     this.scene.add(model);
+    this.fitCameraToObject(model);
     this.renderOnce();
   }
 
@@ -79,6 +85,14 @@ export class RendererCore {
    */
   removeModel(model: Object3D): void {
     this.scene.remove(model);
+    this.renderOnce();
+  }
+
+  /**
+   * 重置相机视角到模型
+   */
+  resetView(model: Object3D): void {
+    this.fitCameraToObject(model);
     this.renderOnce();
   }
 
@@ -129,5 +143,41 @@ export class RendererCore {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false);
+  }
+
+  /**
+   * 将相机自动对准模型
+   */
+  private fitCameraToObject(model: Object3D): void {
+    model.updateWorldMatrix(true, true);
+    this.fitBox.setFromObject(model);
+
+    if (this.fitBox.isEmpty()) {
+      return;
+    }
+
+    this.fitBox.getSize(this.fitSize);
+    this.fitBox.getCenter(this.fitCenter);
+
+    const maxSize = Math.max(this.fitSize.x, this.fitSize.y, this.fitSize.z);
+    if (!Number.isFinite(maxSize) || maxSize <= 0) {
+      return;
+    }
+
+    const fov = (this.camera.fov * Math.PI) / 180;
+    const fitHeightDistance = maxSize / (2 * Math.tan(fov / 2));
+    const fitWidthDistance = fitHeightDistance / this.camera.aspect;
+    const distance = Math.max(fitHeightDistance, fitWidthDistance) * 1.25;
+
+    const direction = new Vector3(1, 0.65, 1).normalize();
+    this.camera.position.copy(this.fitCenter).add(direction.multiplyScalar(distance));
+
+    this.camera.near = Math.max(0.01, distance / 1000);
+    this.camera.far = Math.max(2000, distance * 100);
+    this.camera.updateProjectionMatrix();
+
+    this.controls.target.copy(this.fitCenter);
+    this.controls.maxDistance = Math.max(this.controls.maxDistance, distance * 10);
+    this.controls.update();
   }
 }

@@ -18,6 +18,7 @@ import {
   type ImageDecal,
   type PartConfig
 } from './types';
+import { inspectModelMeshes, loadGlbModel, type GlbInput, type MeshInspectionItem } from './utils/model-loader';
 import './styles/index.css';
 
 /**
@@ -353,6 +354,13 @@ export class TshirtDesigner {
   }
 
   /**
+   * 重置渲染视角
+   */
+  resetView(): void {
+    this.renderer.resetView(this.modelManager.getRoot());
+  }
+
+  /**
    * 获取完整设计状态
    */
   getDesignState(): DesignState {
@@ -544,3 +552,7 @@ export type {
   DesignerEvents,
   PartConfig
 } from './types';
+
+export { loadGlbModel };
+export { inspectModelMeshes };
+export type { GlbInput, MeshInspectionItem };

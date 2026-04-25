@@ -24,14 +24,47 @@
       }
 
       #demo-card {
-        height: min(100%, 820px);
-        max-height: 820px;
+        height: min(100%, 860px);
+        max-height: 860px;
         max-width: 1200px;
         margin: 0 auto;
         background: #ffffff;
         border: 1px solid #d8dee8;
         border-radius: 14px;
         overflow: hidden;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+
+      #toolbar {
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+        border-bottom: 1px solid #e4e8ef;
+        background: #fafbfd;
+      }
+
+      #toolbar-row {
+        display: grid;
+        grid-template-columns: 1fr auto auto auto;
+        gap: 8px;
+      }
+
+      #toolbar-row input,
+      #toolbar-row button,
+      #toolbar button {
+        min-height: 34px;
+      }
+
+      #mesh-info {
+        margin: 0;
+        padding: 8px;
+        border: 1px solid #e4e8ef;
+        border-radius: 8px;
+        max-height: 120px;
+        overflow: auto;
+        font-size: 12px;
+        background: #ffffff;
       }
 
       #app {
@@ -66,6 +99,15 @@
   <body>
     <div id="demo-shell">
       <div id="demo-card">
+        <div id="toolbar">
+          <div id="toolbar-row">
+            <input id="glb-url" type="text" placeholder="输入线上 glb/gltf URL" />
+            <button id="load-remote" type="button">加载线上模型</button>
+            <button id="load-local" type="button">加载 demo/t-shirt.glb</button>
+            <button id="reset-view" type="button">重置视角</button>
+          </div>
+          <pre id="mesh-info">模型命名检查结果会显示在这里</pre>
+        </div>
         <div id="app"></div>
       </div>
     </div>

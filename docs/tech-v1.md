@@ -227,6 +227,8 @@
 2. 提供 loadGlbModel(urlOrFile) 工具函数，基于 three.js GLTFLoader 将 glb/gltf 加载为 Object3D。
 3. 业务使用流程：先调用 loadGlbModel 获取对象，再传入 DesignerConfig.modelData。
 4. 对压缩 glb（如 draco/ktx2）可在后续版本追加对应解码器，不影响当前输入模型协议。
+5. 提供 inspectModelMeshes(model) 工具函数用于输出 mesh 命名清单，辅助配置 parts[].meshTargets。
+6. Vite 可直接加载线上 glb URL，前提是目标服务器允许跨域访问（CORS）；本地 demo 资源可通过相对路径直接加载。
 
 ## 6. API 设计（对外）
 
@@ -245,6 +247,7 @@ class TshirtDesigner {
   setModelValue(modelValue) {}
   getDesignState() {}
   setDesignState(state) {}
+  resetView() {}
   on(eventName, handler) {}
   off(eventName, handler) {}
   destroy() {}

@@ -1,17 +1,52 @@
 import {
+  Box3,
   BoxGeometry,
   Group,
   Mesh,
   MeshStandardMaterial,
   Object3D,
-  SphereGeometry
+  SphereGeometry,
+  Vector3
 } from 'three';
-import { TshirtDesigner, type DesignState, type PartConfig } from '../src/index';
+import {
+  TshirtDesigner,
+  inspectModelMeshes,
+  loadGlbModel,
+  type DesignState,
+  type PartConfig
+} from '../src/index';
+
+/**
+ * 默认色板常量
+ */
+const DEFAULT_PALETTE = ['#ffffff', '#f4d03f', '#5dade2', '#58d68d', '#ec7063'];
 
 /**
  * toast 展示时长常量
  */
 const TOAST_DURATION_MS = 2200;
+
+/**
+ * 设计器实例引用
+ */
+let designer: TshirtDesigner | null = null;
+
+/**
+ * 获取挂载节点
+ */
+function getMountElement(): HTMLElement {
+  const mountEl = document.getElementById('app');
+  if (!mountEl) {
+    throw new Error('Missing #app mount element');
+  }
+
+  return mountEl;
+}
+
+/**
+ * 挂载节点常量
+ */
+const mountEl = getMountElement();
 
 /**
  * 展示错误提示
@@ -27,6 +62,46 @@ function showToast(message: string): void {
   window.setTimeout(() => {
     toastEl.classList.remove('is-visible');
   }, TOAST_DURATION_MS);
+}
+
+/**
+ * 更新模型命名检查信息
+ */
+function updateMeshInfo(model: Object3D): PartConfig[] {
+  const infoEl = document.getElementById('mesh-info');
+  const meshItems = inspectModelMeshes(model);
+  const modelBounds = new Box3().setFromObject(model);
+
+  console.log('mesh-inspection', meshItems);
+
+  const uniqueNames = Array.from(
+    new Set(meshItems.map((item) => item.name).filter((name) => name && name !== '(empty-name)'))
+  );
+
+  if (infoEl) {
+    if (meshItems.length === 0) {
+      infoEl.textContent = '未发现 Mesh 节点';
+    } else {
+      const lines = meshItems
+        .slice(0, 60)
+        .map((item, index) => `${index + 1}. ${item.name}  [${item.uuid.slice(0, 8)}]`);
+      infoEl.textContent = lines.join('\n');
+    }
+  }
+
+  // 线上模型命名未知时，按网格名自动生成部件映射
+  if (!modelBounds.isEmpty()) {
+    const size = modelBounds.getSize(new Vector3());
+    console.log('model-bounds-size', { x: size.x, y: size.y, z: size.z });
+  }
+
+  return uniqueNames.map((name, index) => ({
+    partId: `part_${index + 1}`,
+    name,
+    meshTargets: [name],
+    defaultColor: '#ffffff',
+    palette: DEFAULT_PALETTE
+  }));
 }
 
 /**
@@ -61,85 +136,143 @@ function buildMockModel(): Object3D {
 }
 
 /**
- * 演示部件配置
+ * 创建并挂载设计器
  */
-const parts: PartConfig[] = [
-  {
-    partId: 'front',
-    name: '前片',
-    meshTargets: ['front_panel'],
-    defaultColor: '#ffffff',
-    palette: ['#ffffff', '#f4d03f', '#5dade2', '#58d68d', '#ec7063']
-  },
-  {
-    partId: 'back',
-    name: '后片',
-    meshTargets: ['back_panel'],
-    defaultColor: '#ffffff',
-    palette: ['#ffffff', '#f4d03f', '#5dade2', '#58d68d', '#ec7063']
-  },
-  {
-    partId: 'collar',
-    name: '领口',
-    meshTargets: ['collar'],
-    defaultColor: '#ffffff',
-    palette: ['#ffffff', '#2c3e50', '#1f2d3a']
-  }
-];
+function mountDesigner(modelData: Object3D, parts: PartConfig[]): void {
+  designer?.destroy();
 
-/**
- * 获取挂载节点
- */
-const mountEl = document.getElementById('app');
-if (!mountEl) {
-  throw new Error('Missing #app mount element');
+  designer = new TshirtDesigner({
+    mountEl,
+    modelData,
+    parts,
+    throwOnError: false,
+    zoom: {
+      min: 1,
+      max: 5,
+      initial: 2.2
+    },
+    controls: {
+      rotate: true,
+      pan: true
+    }
+  });
+
+  if (parts.length > 0) {
+    designer.addTextDecal(parts[0].partId, {
+      text: 'T-SHIRT',
+      y: 0.75
+    });
+  }
+
+  designer.on('update:modelValue', ({ modelValue }: { modelValue: DesignState }) => {
+    console.log('design-state', modelValue);
+  });
+
+  designer.on('error', ({ message }) => {
+    console.error('designer-error', message);
+    showToast(message);
+  });
+
+  designer.on('runtimeError', ({ message, willThrow }) => {
+    console.warn('designer-runtime-error', message, { willThrow });
+  });
 }
 
 /**
- * 创建设计器实例
+ * 加载并挂载 glb 模型
  */
-const designer = new TshirtDesigner({
-  mountEl,
-  modelData: buildMockModel(),
-  parts,
-  throwOnError: false,
-  zoom: {
-    min: 1,
-    max: 5,
-    initial: 2.2
-  },
-  controls: {
-    rotate: true,
-    pan: true
+async function loadGlbAndMount(source: string | File): Promise<void> {
+  try {
+    showToast('开始加载 GLB 模型');
+    const model = await loadGlbModel(source);
+    const parts = updateMeshInfo(model);
+
+    if (parts.length === 0) {
+      showToast('模型缺少可用命名，无法自动映射部件');
+      return;
+    }
+
+    console.table(parts.map((item) => ({ partId: item.partId, mesh: item.meshTargets[0] })));
+    mountDesigner(model, parts);
+    showToast(`模型加载完成，已识别 ${parts.length} 个部件`);
+  } catch (error) {
+    console.error(error);
+    showToast('模型加载失败，请检查 URL、CORS 或文件有效性');
   }
-});
+}
 
 /**
- * 默认插入一条文字贴图用于演示
+ * 初始化工具栏交互
  */
-designer.addTextDecal('front', {
-  text: 'T-SHIRT',
-  y: 0.75
-});
+function initToolbar(): void {
+  const remoteInput = document.getElementById('glb-url') as HTMLInputElement | null;
+  const loadRemoteButton = document.getElementById('load-remote') as HTMLButtonElement | null;
+  const loadLocalButton = document.getElementById('load-local') as HTMLButtonElement | null;
+  const resetViewButton = document.getElementById('reset-view') as HTMLButtonElement | null;
+
+  if (remoteInput && loadRemoteButton) {
+    loadRemoteButton.addEventListener('click', () => {
+      const url = remoteInput.value.trim();
+      if (!url) {
+        showToast('请先输入线上 glb/gltf URL');
+        return;
+      }
+
+      void loadGlbAndMount(url);
+    });
+  }
+
+  if (loadLocalButton) {
+    loadLocalButton.addEventListener('click', () => {
+      void loadGlbAndMount('t-shirt.glb');
+    });
+  }
+
+  if (resetViewButton) {
+    resetViewButton.addEventListener('click', () => {
+      if (!designer) {
+        return;
+      }
+
+      designer.resetView();
+      showToast('视角已重置');
+    });
+  }
+}
 
 /**
- * 观察状态快照变更
+ * 初始化默认演示
  */
-designer.on('update:modelValue', ({ modelValue }: { modelValue: DesignState }) => {
-  console.log('design-state', modelValue);
-});
+function bootstrap(): void {
+  initToolbar();
 
-/**
- * 观察错误事件
- */
-designer.on('error', ({ message }) => {
-  console.error('designer-error', message);
-  showToast(message);
-});
+  const model = buildMockModel();
+  const defaultParts = [
+    {
+      partId: 'front',
+      name: 'front_panel',
+      meshTargets: ['front_panel'],
+      defaultColor: '#ffffff',
+      palette: DEFAULT_PALETTE
+    },
+    {
+      partId: 'back',
+      name: 'back_panel',
+      meshTargets: ['back_panel'],
+      defaultColor: '#ffffff',
+      palette: DEFAULT_PALETTE
+    },
+    {
+      partId: 'collar',
+      name: 'collar',
+      meshTargets: ['collar'],
+      defaultColor: '#ffffff',
+      palette: ['#ffffff', '#2c3e50', '#1f2d3a']
+    }
+  ] satisfies PartConfig[];
 
-/**
- * 观察运行时错误事件
- */
-designer.on('runtimeError', ({ message, willThrow }) => {
-  console.warn('designer-runtime-error', message, { willThrow });
-});
+  updateMeshInfo(model);
+  mountDesigner(model, defaultParts);
+}
+
+bootstrap();
