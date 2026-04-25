@@ -80,7 +80,24 @@ export class Panel {
       section.classList.toggle('is-active', id === partId);
     }
 
-    this.partSectionById.get(partId)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const target = this.partSectionById.get(partId);
+    if (!target) {
+      return;
+    }
+
+    const targetTop = target.offsetTop;
+    const targetBottom = targetTop + target.offsetHeight;
+    const viewTop = this.root.scrollTop;
+    const viewBottom = viewTop + this.root.clientHeight;
+
+    if (targetTop < viewTop) {
+      this.root.scrollTo({ top: targetTop, behavior: 'smooth' });
+      return;
+    }
+
+    if (targetBottom > viewBottom) {
+      this.root.scrollTo({ top: targetBottom - this.root.clientHeight, behavior: 'smooth' });
+    }
   }
 
   /**

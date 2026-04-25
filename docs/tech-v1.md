@@ -18,6 +18,7 @@
 2. UI（DOM 面板）
 - 负责部位列表、颜色选择、贴图上传、贴图变换控件。
 - 通过事件调用 Core，不直接操作 three.js 细节。
+- 编辑区使用独立滚动容器，部位联动时仅滚动编辑区，不滚动整个页面。
 
 3. Config（外部输入）
 - 提供模型数据、部位配置、默认值与限制项。
@@ -219,6 +220,13 @@
 2. 运行时 setPartColor 也执行 palette 二次校验，防止绕过 UI 的非法输入。
 3. 当 part.allowTexture=false 时，图片上传与文字新增控件禁用，运行时贴图 API 直接拒绝并触发 error 事件。
 4. 所有运行时异常统一触发 runtimeError 事件，并通过 throwOnError 参数控制是否额外抛出异常。
+
+### 5.8 GLB 适配策略
+
+1. 核心渲染层仍以 Object3D 为统一输入，保持与业务模型来源解耦。
+2. 提供 loadGlbModel(urlOrFile) 工具函数，基于 three.js GLTFLoader 将 glb/gltf 加载为 Object3D。
+3. 业务使用流程：先调用 loadGlbModel 获取对象，再传入 DesignerConfig.modelData。
+4. 对压缩 glb（如 draco/ktx2）可在后续版本追加对应解码器，不影响当前输入模型协议。
 
 ## 6. API 设计（对外）
 

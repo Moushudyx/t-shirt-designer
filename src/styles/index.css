@@ -15,7 +15,13 @@
   background: #f8f8f8;
 }
 
+.tsd-side {
+  min-height: 0;
+  overflow: hidden;
+}
+
 .tsd-panel {
+  height: 100%;
   overflow: auto;
   border: 1px solid #d6d6d6;
   border-radius: 10px;
