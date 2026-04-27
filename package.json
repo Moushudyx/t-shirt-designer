@@ -1,6 +1,6 @@
 {
   "name": "t-shirt-designer",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Framework-agnostic t-shirt designer powered by three.js",
   "type": "module",
   "main": "./dist/index.umd.js",
