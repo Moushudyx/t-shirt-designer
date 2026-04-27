@@ -26,7 +26,6 @@
   "engines": {
     "node": ">=20.19.0"
   },
-  "packageManager": "pnpm@10.14.0",
   "dependencies": {
     "three": "0.184.0"
   },
