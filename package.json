@@ -16,7 +16,7 @@
   },
   "scripts": {
     "dev": "vite demo",
-    "build": "tsc -p tsconfig.json && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "test": "echo \"No tests configured yet\""
   },
@@ -34,6 +34,7 @@
     "@types/node": "22.12.0",
     "@types/three": "0.184.0",
     "typescript": "5.9.3",
-    "vite": "8.0.10"
+    "vite": "8.0.10",
+    "vite-plugin-dts": "4.5.4"
   }
 }
