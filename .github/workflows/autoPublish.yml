@@ -7,7 +7,7 @@ name: 🧿 Automatic Publish to NPM
 on:
   push:
     branches:
-      - master
+      - main
     paths:
       - "package.json"  # 仅当 package.json 变化时触发
 
