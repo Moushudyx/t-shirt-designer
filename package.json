@@ -21,8 +21,16 @@
     "test": "echo \"No tests configured yet\""
   },
   "keywords": [],
-  "author": "",
+  "author": "Moushu",
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Moushudyx/t-shirt-designer/issues"
+  },
+  "homepage": "https://github.com/Moushudyx/t-shirt-designer#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Moushudyx/t-shirt-designer.git"
+  },
   "engines": {
     "node": ">=20.19.0"
   },
