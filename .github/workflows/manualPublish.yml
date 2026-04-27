@@ -40,7 +40,7 @@ jobs:
       - name: 📦 Install dependencies # 安装依赖
         run: pnpm install
       - name: 🚀 Build & Publish Package # 编译并发布
-        run: npm publish --provenance
+        run: npm publish --provenance --access=public
         if: | # 仅在 Moushudyx/foreslash 下发布, 防止别人 fork 后误操作
           startsWith(github.repository, 'Moushudyx')
         env:
